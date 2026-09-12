@@ -2,7 +2,7 @@
 
 **Este es un estado de Terraform aparte, independiente del resto de `iac-gcp-dev` — y NUNCA se destruye por sesión.**
 
-Contiene solo lo que necesita sobrevivir a que el resto del ambiente (`../` — cluster, Argo CD, Spanner, secretos) se destruya y se vuelva a crear en cada sesión de trabajo: la IP estática y el certificado gestionado que usa el `Gateway` de `bff-web` para tener una dirección pública **estable** (el API Gateway de `modules/ingress` necesita apuntar a algo que no cambie cada vez).
+Contiene solo lo que necesita sobrevivir a que el resto del ambiente (`../` — cluster, Argo CD, Spanner, secretos) se destruya y se vuelva a crear en cada sesión de trabajo: la IP estática y el certificado gestionado del **punto de entrada único del ambiente** (`dev.solventa4bits.com`, DI-010) — hoy lo sirve el `Gateway` de `bff-web` directamente, pero por diseño (DI-011) va a pasar a ser el `Gateway` del API Gateway (Apache APISIX, `deploy/apps/api-gateway/`), no de ningún BFF en particular. Ningún BFF ni la API de socios tienen o van a tener dirección pública propia — todos quedan detrás de este único punto de entrada.
 
 ## Por qué existe
 
@@ -25,6 +25,8 @@ terraform init
 terraform apply
 ```
 
-Después de aplicar, `terraform output bff_web_static_ip` da la IP a usar en el registro DNS (`bff-web.dev.solventa4bits.com`, a crear a mano en Squarespace mientras no exista la delegación a Cloud DNS — ver DI-010).
+Después de aplicar, `terraform output edge_static_ip` da la IP a usar en el registro DNS (`dev.solventa4bits.com`, a crear a mano en Squarespace mientras no exista la delegación a Cloud DNS — ver DI-010).
 
-El `Gateway` de `bff-web` (en el repo `deploy`) referencia el nombre de esta IP (`bff-web-dev`) y el nombre del `CertificateMap` (`bff-web-dev-map`) directamente — son nombres fijos, no hace falta pasarlos por ninguna otra parte.
+El `Gateway` que sirve este tráfico (hoy en `deploy/apps/bff-web/base/gateway.yaml`, mañana en `deploy/apps/api-gateway/`) referencia el nombre de esta IP (`bff-web-dev` — nombre físico heredado, ver comentario en `main.tf`) y el nombre del `CertificateMap` (`edge-dev-map`) directamente — son nombres fijos, no hace falta pasarlos por ninguna otra parte.
+
+**Nota histórica**: estos recursos se llamaron originalmente `bff-web-*` (pensando en una dirección propia para `bff-web`, antes de DI-011). Se renombraron a `edge-*` el 2026-09-12 vía `terraform state mv` (conservando la misma IP física, `34.120.130.162`) al decidir que el API Gateway corre dentro del cluster — el certificado y el mapa sí se recrearon (cambio de dominio de `bff-web.dev.solventa4bits.com` a `dev.solventa4bits.com`), la IP no.

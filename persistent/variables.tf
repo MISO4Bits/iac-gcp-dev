@@ -10,8 +10,8 @@ variable "region" {
   default     = "southamerica-east1"
 }
 
-variable "bff_web_domain" {
-  description = "Dominio público estable del Gateway de bff-web — el origen que llama el API Gateway de modules/ingress."
+variable "edge_domain" {
+  description = "Dominio público estable del punto de entrada único del ambiente (API Gateway/APISIX, DI-011) — dev.solventa4bits.com, asignado en DI-010. No es un dominio de bff-web: ningún BFF ni la API de socios tienen dirección pública propia."
   type        = string
-  default     = "bff-web.dev.solventa4bits.com"
+  default     = "dev.solventa4bits.com"
 }
