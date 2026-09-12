@@ -1,11 +1,23 @@
 provider "google" {
   project = var.project_id
   region  = var.region
+
+  # Sin esto, algunas APIs (identitytoolkit, entre otras) rechazan las
+  # llamadas hechas con credenciales por defecto de la aplicación (ADC)
+  # locales con "requires a quota project, which is not set by default" —
+  # incluso después de `gcloud auth application-default set-quota-project`,
+  # porque ese comando no es lo que el proveedor de Terraform usa para
+  # decidir qué proyecto facturar. Esto sí lo fuerza explícitamente.
+  billing_project       = var.project_id
+  user_project_override = true
 }
 
 provider "google-beta" {
   project = var.project_id
   region  = var.region
+
+  billing_project       = var.project_id
+  user_project_override = true
 }
 
 # Credencial de la identidad ya autenticada (gcloud ADC en local, Workload
