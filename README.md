@@ -25,6 +25,15 @@ terraform apply
 
 `terraform.tfvars` no se versiona (ver `.gitignore`) — ajustar ahí cualquier valor distinto al de los defaults en `variables.tf`.
 
+**`apply` en dos pasos, siempre** (no solo la primera vez): los providers de Kubernetes/Helm/kubectl (`providers.tf`) se configuran con el endpoint del cluster que crea `modules/gke` — un valor que no existe todavía si el cluster no existe. Como el equipo destruye todo al final de cada sesión (hábito de abajo), cada `apply` arranca de cero, así que esto pasa siempre, no solo la primera vez:
+
+```shell
+terraform apply -target=module.gke
+terraform apply
+```
+
+Si se corre `terraform apply` directo sin el primer paso, es esperable que falle intentando resolver los providers de Kubernetes/Helm/kubectl contra un cluster que aún no existe.
+
 **Hábito no negociable del equipo**: `terraform destroy` al terminar cada sesión de trabajo. Todos los recursos de este repo están escritos para poder destruirse sin fricción (`deletion_protection = false`, `disable_on_destroy = true`).
 
 ## Pasos manuales después de aplicar
