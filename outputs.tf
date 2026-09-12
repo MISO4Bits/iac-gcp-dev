@@ -47,3 +47,18 @@ output "identity_platform_secret_id" {
   description = "Nombre del secreto en Secret Manager donde va la API key de Identity Platform — subir el valor a mano después de aplicar (ver README)."
   value       = module.secrets.secret_ids["bff-web-secrets"]
 }
+
+output "api_gateway_namespace" {
+  description = "Namespace donde corre APISIX — lo necesita el GatewayProxy en deploy/apps/api-gateway/."
+  value       = module.api_gateway.namespace
+}
+
+output "api_gateway_admin_service_name" {
+  description = "Nombre del Service del Admin API de APISIX — lo necesita el GatewayProxy en deploy/apps/api-gateway/."
+  value       = module.api_gateway.admin_service_name
+}
+
+output "api_gateway_admin_key_secret_name" {
+  description = "Nombre del Secret con la clave real del Admin API de APISIX — el GatewayProxy en deploy/apps/api-gateway/ la referencia por secretKeyRef."
+  value       = module.api_gateway.admin_key_secret_name
+}

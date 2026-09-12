@@ -21,10 +21,39 @@
 # maneja vía la propia Admin API de APISIX, sin un componente con estado
 # adicional que mantener.
 
+# El chart trae una clave de Admin API por defecto conocida (pública, en el
+# código fuente del chart) — no es aceptable dejarla tal cual, ni siquiera
+# para un Admin API que solo es alcanzable dentro del cluster. Se genera una
+# real y se guarda en un Secret, nunca en texto plano en un manifiesto
+# versionado — el GatewayProxy en deploy/apps/api-gateway/ la referencia por
+# secretKeyRef (soportado directamente por el CRD), nunca por valor.
+resource "random_password" "apisix_admin_key" {
+  length  = 32
+  special = false
+}
+
+resource "kubernetes_namespace_v1" "api_gateway" {
+  metadata {
+    name = var.namespace
+  }
+}
+
+resource "kubernetes_secret_v1" "apisix_admin_key" {
+  metadata {
+    name      = "apisix-admin-key"
+    namespace = kubernetes_namespace_v1.api_gateway.metadata[0].name
+  }
+
+  data = {
+    "admin-key" = random_password.apisix_admin_key.result
+  }
+}
+
 resource "helm_release" "apisix" {
-  name             = "apisix"
-  namespace        = var.namespace
-  create_namespace = true
+  name      = "apisix"
+  namespace = kubernetes_namespace_v1.api_gateway.metadata[0].name
+
+  depends_on = [kubernetes_secret_v1.apisix_admin_key]
 
   repository = "https://apache.github.io/apisix-helm-chart"
   chart      = "apisix"
@@ -72,6 +101,16 @@ resource "helm_release" "apisix" {
     {
       name  = "ingress-controller.apisix.adminService.namespace"
       value = var.namespace
+    },
+    # Clave real del Admin API, generada arriba — reemplaza la clave de
+    # ejemplo pública que trae el chart por defecto (admin.credentials.admin).
+    {
+      name  = "admin.credentials.secretName"
+      value = kubernetes_secret_v1.apisix_admin_key.metadata[0].name
+    },
+    {
+      name  = "admin.credentials.secretAdminKey"
+      value = "admin-key"
     },
   ]
 }
