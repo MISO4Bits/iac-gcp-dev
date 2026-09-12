@@ -21,6 +21,17 @@ module "spanner" {
   region     = var.region
 }
 
+# API Gateway del ambiente (DI-011) — Apache APISIX dentro del cluster.
+# depends_on explícito porque el módulo solo usa el provider de helm (no
+# referencia ninguna salida de module.gke), y ese provider se configura
+# contra el endpoint del cluster — sin el cluster creado, el provider de
+# helm no tiene contra qué autenticar.
+module "api_gateway" {
+  source = "./modules/api-gateway"
+
+  depends_on = [module.gke]
+}
+
 # Identity Platform real (no el emulador local de Firebase Auth que usa
 # bff-web por defecto en desarrollo) — necesario para que BFF Web autentique
 # clientes de verdad. La API key resultante la genera Google; Terraform no
