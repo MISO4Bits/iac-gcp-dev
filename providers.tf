@@ -29,6 +29,15 @@ provider "helm" {
     cluster_ca_certificate = base64decode(module.gke.cluster_ca_certificate)
     token                  = data.google_client_config.default.access_token
   }
+
+  # Explícito en vez de dejar que el provider use su ruta por defecto (cae
+  # en el directorio temporal del sistema operativo si no hay un Helm CLI
+  # configurado): una caché ajena a este repo, compartida con cualquier
+  # otra cosa que haya usado Helm en la máquina, puede quedar con
+  # referencias a repositorios que no son de este proyecto y romper
+  # "Unable to locate chart" sin relación aparente con este código.
+  repository_cache       = "${path.root}/.terraform/helm-cache"
+  repository_config_path = "${path.root}/.terraform/helm-repositories.yaml"
 }
 
 provider "kubectl" {
