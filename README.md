@@ -34,7 +34,7 @@ terraform apply
 
 Si se corre `terraform apply` directo sin el primer paso, es esperable que falle intentando resolver los providers de Kubernetes/Helm/kubectl contra un cluster que aún no existe.
 
-**Hábito no negociable del equipo**: `terraform destroy` al terminar cada sesión de trabajo. Todos los recursos de este repo están escritos para poder destruirse sin fricción (`deletion_protection = false`, `disable_on_destroy = true`).
+**Hábito no negociable del equipo**: `terraform destroy` al terminar cada sesión de trabajo — **pero solo en esta raíz, nunca dentro de `persistent/`** (ver esa carpeta, es un estado de Terraform totalmente aparte). Todos los recursos de esta raíz están escritos para poder destruirse sin fricción (`deletion_protection = false`, `disable_on_destroy = true`).
 
 ## Pasos manuales después de aplicar
 
@@ -51,6 +51,15 @@ Terraform no puede automatizar todo — algunos valores solo existen después de
 
 ```
 iac-gcp-dev/
+├── persistent/              # ESTADO DE TERRAFORM APARTE — nunca se destruye por sesión.
+│   │                        # IP estática + certificado gestionado del Gateway de bff-web.
+│   │                        # Ver persistent/README.md antes de tocar nada aquí.
+│   ├── backend.tf           # mismo bucket, prefix="persistent" (distinto al de la raíz)
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── providers.tf
+│   └── versions.tf
 ├── modules/                 # una carpeta por pieza reusable, con su propia interfaz (variables/outputs)
 │   ├── gke/                 # cluster de GKE Autopilot, southamerica-east1
 │   ├── argocd/              # Argo CD (Helm) + root Application de GitOps, DI-007
@@ -67,6 +76,8 @@ iac-gcp-dev/
 Plan de construcción completo: `modules/gke` → `modules/argocd` (bootstrap de GitOps, sin depender de ningún servicio) → `modules/spanner` (DI-009) → `modules/ingress` (Load Balancer + Cloud Armor + API Gateway + certificado gestionado — pendiente de que exista una dirección real de BFF Web vía el repo `deploy`; ver nota abajo). Sin `modules/messaging` por ahora — los experimentos EXP-01/EXP-02 son 100% síncronos.
 
 **Nota sobre `modules/argocd`**: el root `Application` que crea apunta a `deploy/argocd/` en el repo GitOps `deploy`. Mientras esa carpeta esté vacía o sin sincronizar, Argo CD simplemente queda en estado de sincronización fallida — no bloquea el resto del `apply`.
+
+**Nota sobre `persistent/`**: el `Gateway` de `bff-web` (en `deploy`) obtiene una IP efímera si no se le indica una propia — Google la libera en cuanto se borra el `Gateway`, y como este repo se destruye por sesión, esa IP cambiaría cada vez (mal para el `x-google-backend` del `openapi.yaml` de `bff-web`, que necesita algo estable). Se evaluó reservarla en `iac-gcp-admin` (el único ambiente persistente) — **descartado**: se probó en vivo (2026-09-12) y el `Gateway` de GKE no acepta direcciones estáticas de otro proyecto (`Error GWCER106: address "..." does not exist`, con nombre corto y con ruta completa). Por eso vive aquí mismo, en `solventa-dev`, pero en un estado de Terraform separado que el equipo debe recordar **no** destruir.
 
 **Nota sobre `modules/secrets`**: decisión 2026-09-12 — Secret Manager + el *add-on* nativo de GKE (interfaz de almacenamiento de contenedores, CSI) en vez de External Secrets Operator (DI-007, 5.8 queda descartado) o un HashiCorp Vault propio en `admin` (evaluado y rechazado — demasiada carga operativa para lo que resuelve, sin ninguna ventaja dado que GCP ya es la única nube del proyecto). Cero componentes adicionales que mantener: el *add-on* viene con el cluster. El módulo solo crea el contenedor del secreto y el acceso — el valor se sube a mano (ver "Pasos manuales" arriba).
 
