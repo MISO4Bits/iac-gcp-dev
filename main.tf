@@ -80,6 +80,22 @@ module "secrets" {
   }
 }
 
+# Observabilidad del ambiente (DI-008): Alloy dentro del cluster reenviando
+# a Grafana Cloud. depends_on module.gke por el mismo motivo que
+# module.api_gateway (necesita el cluster para el provider de helm); además
+# depende de module.secrets porque ese módulo es quien habilita la API de
+# Secret Manager que este también usa.
+module "observability" {
+  source = "./modules/observability"
+
+  project_id                  = var.project_id
+  cluster_name                = var.project_id
+  grafana_cloud_otlp_endpoint = "https://otlp-gateway-prod-sa-east-1.grafana.net/otlp"
+  grafana_cloud_instance_id   = "1819034"
+
+  depends_on = [module.gke, module.secrets]
+}
+
 # Único permiso cruzado con el proyecto admin: los nodos de este cluster
 # necesitan leer imágenes del repositorio compartido de Artifact Registry
 # (pendiente que había quedado abierto en DI-004 hasta que existiera el
