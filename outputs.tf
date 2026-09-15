@@ -62,3 +62,8 @@ output "api_gateway_admin_key_secret_name" {
   description = "Nombre del Secret con la clave real del Admin API de APISIX — el GatewayProxy en deploy/apps/api-gateway/ la referencia por secretKeyRef."
   value       = module.api_gateway.admin_key_secret_name
 }
+
+output "waf_security_policy_name" {
+  description = "Nombre de la Cloud Armor Security Policy — el GCPBackendPolicy en deploy/apps/api-gateway/ la referencia por spec.default.securityPolicy."
+  value       = module.waf.security_policy_name
+}

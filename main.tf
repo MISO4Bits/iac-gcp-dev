@@ -32,6 +32,14 @@ module "api_gateway" {
   depends_on = [module.gke]
 }
 
+# WAF delante del API Gateway (DI-011) — sin dependencia de GKE, es un
+# recurso global de Compute Engine independiente del cluster.
+module "waf" {
+  source = "./modules/waf"
+
+  project_id = var.project_id
+}
+
 # Identity Platform real (no el emulador local de Firebase Auth que usa
 # bff-web por defecto en desarrollo) — necesario para que BFF Web autentique
 # clientes de verdad. La API key resultante la genera Google; Terraform no
