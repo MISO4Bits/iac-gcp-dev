@@ -32,12 +32,22 @@ resource "random_password" "apisix_admin_key" {
   special = false
 }
 
+resource "random_password" "apisix_viewer_key" {
+  length  = 32
+  special = false
+}
+
 resource "kubernetes_namespace_v1" "api_gateway" {
   metadata {
     name = var.namespace
   }
 }
 
+# Claves "admin" y "viewer" (nombres fijos que espera el chart si no se
+# sobreescriben explícitamente admin.credentials.secretAdminKey/
+# secretViewerKey — ver templates/_helpers.tpl del chart) en el MISMO
+# Secret: el Deployment de APISIX inyecta ambas desde un solo
+# admin.credentials.secretName.
 resource "kubernetes_secret_v1" "apisix_admin_key" {
   metadata {
     name      = "apisix-admin-key"
@@ -45,7 +55,8 @@ resource "kubernetes_secret_v1" "apisix_admin_key" {
   }
 
   data = {
-    "admin-key" = random_password.apisix_admin_key.result
+    admin  = random_password.apisix_admin_key.result
+    viewer = random_password.apisix_viewer_key.result
   }
 }
 
@@ -103,14 +114,18 @@ resource "helm_release" "apisix" {
       value = var.namespace
     },
     # Clave real del Admin API, generada arriba — reemplaza la clave de
-    # ejemplo pública que trae el chart por defecto (admin.credentials.admin).
+    # ejemplo pública que trae el chart por defecto
+    # (apisix.admin.credentials.admin). El campo va anidado bajo
+    # "apisix." — un primer intento lo puso en "admin.credentials.*"
+    # (sin ese prefijo) y quedó silenciosamente sin efecto: el chart
+    # siguió usando la clave pública por defecto, causando 401 en el
+    # ingress-controller al intentar autenticarse contra el Admin API
+    # con la clave (correcta) del Secret. Confirmado leyendo
+    # templates/configmap.yaml y templates/_helpers.tpl del chart
+    # directamente, no adivinado.
     {
-      name  = "admin.credentials.secretName"
+      name  = "apisix.admin.credentials.secretName"
       value = kubernetes_secret_v1.apisix_admin_key.metadata[0].name
-    },
-    {
-      name  = "admin.credentials.secretAdminKey"
-      value = "admin-key"
     },
   ]
 }
