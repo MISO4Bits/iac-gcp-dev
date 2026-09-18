@@ -46,6 +46,7 @@ Terraform no puede automatizar todo — algunos valores solo existen después de
    - Sin este paso, el pod de `bff-web` arranca pero el archivo `/var/secrets/BFF_IDENTITY_API_KEY` no existe — el registro de clientes fallará contra Identity Platform real (revisar `deploy/apps/bff-web` para el resto del cableado).
 2. **Cuentas de servicio (GSA) por secreto**: `terraform output secret_reader_service_account_emails` después de aplicar. Cada correo ahí va en la anotación `iam.gke.io/gcp-service-account` de la `ServiceAccount` de Kubernetes (KSA) correspondiente en `deploy` — hoy ya está puesto a mano en `deploy/apps/bff-web/base/serviceaccount.yaml` con el valor esperado (`bff-web-secrets@solventa-dev.iam.gserviceaccount.com`, se arma de forma predecible a partir de la clave del mapa en `modules/secrets`); si se agrega un secreto nuevo, confirmar con el output real antes de pegarlo en `deploy`.
 3. **Registro NS del dominio y correo** — no aplica a este repo, ver DI-010 en Confluence ("Log de decisiones de Infraestructura").
+4. **Cuentas de servicio (GSA) de Pub/Sub**: `terraform output pubsub_service_account_emails` después de aplicar. Mismo mecanismo que el paso 2 — cada correo va en la anotación `iam.gke.io/gcp-service-account` de la KSA correspondiente en `deploy`; ya está puesto a mano en `deploy/apps/svc-core/base/serviceaccount.yaml` y `deploy/apps/svc-perfilamiento/base/serviceaccount.yaml` con los valores esperados (`svc-core-pubsub@...`, `svc-perfilamiento-pubsub@...`), confirmar contra el output real.
 
 ## Estructura
 
@@ -64,7 +65,8 @@ iac-gcp-dev/
 │   ├── gke/                 # cluster de GKE Autopilot, southamerica-east1
 │   ├── argocd/              # Argo CD (Helm) + root Application de GitOps, DI-007
 │   ├── spanner/             # 2 instancias regionales (core + services compartida) + bases de datos, DI-009
-│   └── secrets/             # secretos de Secret Manager (solo el contenedor) + acceso por Workload Identity
+│   ├── secrets/             # secretos de Secret Manager (solo el contenedor) + acceso por Workload Identity
+│   └── pubsub/              # tópico compartido de eventos de dominio + suscripciones, BITS-105
 ├── main.tf                  # raíz: solo instancia módulos y conecta sus salidas
 ├── backend.tf
 ├── providers.tf             # incluye los providers de Kubernetes/Helm/kubectl, apuntando al cluster de modules/gke
@@ -73,7 +75,7 @@ iac-gcp-dev/
 └── versions.tf
 ```
 
-Plan de construcción completo: `modules/gke` → `modules/argocd` (bootstrap de GitOps, sin depender de ningún servicio) → `modules/spanner` (DI-009) → `modules/api-gateway` (instala Apache APISIX vía Helm — API Gateway corre dentro del cluster, DI-011, no es el producto gestionado de Google: no está disponible en `southamerica-east1`/`southamerica-west1`). Sin `modules/messaging` por ahora — los experimentos EXP-01/EXP-02 son 100% síncronos.
+Plan de construcción completo: `modules/gke` → `modules/argocd` (bootstrap de GitOps, sin depender de ningún servicio) → `modules/spanner` (DI-009) → `modules/api-gateway` (instala Apache APISIX vía Helm — API Gateway corre dentro del cluster, DI-011, no es el producto gestionado de Google: no está disponible en `southamerica-east1`/`southamerica-west1`) → `modules/pubsub` (BITS-105 — tópico compartido de eventos de dominio; CoreTransaccional publica, Perfilamiento consume y además publica los suyos).
 
 **Nota sobre `modules/argocd`**: el root `Application` que crea apunta a `deploy/argocd/` en el repo GitOps `deploy`. Mientras esa carpeta esté vacía o sin sincronizar, Argo CD simplemente queda en estado de sincronización fallida — no bloquea el resto del `apply`.
 

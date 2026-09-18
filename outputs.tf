@@ -48,6 +48,16 @@ output "identity_platform_secret_id" {
   value       = module.secrets.secret_ids["bff-web-secrets"]
 }
 
+output "pubsub_topic_name" {
+  description = "Nombre del tópico compartido de eventos de dominio."
+  value       = module.pubsub.topic_name
+}
+
+output "pubsub_service_account_emails" {
+  description = "Correo de la GSA dedicada a cada componente (por clave del mapa `service_accounts` en main.tf) — pegar en la anotación `iam.gke.io/gcp-service-account` de la KSA correspondiente en `deploy`."
+  value       = module.pubsub.service_account_emails
+}
+
 output "api_gateway_namespace" {
   description = "Namespace donde corre APISIX — lo necesita el GatewayProxy en deploy/apps/api-gateway/."
   value       = module.api_gateway.namespace

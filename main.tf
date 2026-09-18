@@ -80,6 +80,45 @@ module "secrets" {
   }
 }
 
+# Bus de eventos de dominio (mensajería, ver CLAUDE.md): tópico compartido
+# "solventa-dominio" + una suscripción de pull por consumidor. Hoy: Core
+# publica ConsentimientoOtorgado/ConsentimientoRevocado al otorgar/revocar
+# consentimiento; Perfilamiento los consume para disparar el cálculo (o
+# invalidación) del perfil de riesgo de forma asíncrona (Confluence,
+# página Perfilamiento, Sección 8, decisión 2026-09-18) y publica
+# PerfilCalculado (sin consumidor todavía).
+module "pubsub" {
+  source = "./modules/pubsub"
+
+  project_id = var.project_id
+  topic_name = "solventa-dominio"
+
+  service_accounts = {
+    svc-core = {
+      ksa_namespace = "svc-core"
+      ksa_name      = "svc-core"
+      publica       = true
+    }
+    # Perfilamiento publica (PerfilCalculado, sin consumidor todavía) y
+    # además consume ConsentimientoOtorgado/ConsentimientoRevocado — las dos
+    # cosas en la misma GSA (una KSA solo se federa con una GSA a la vez).
+    svc-perfilamiento = {
+      ksa_namespace = "svc-perfilamiento"
+      ksa_name      = "svc-perfilamiento"
+      publica       = true
+      suscripciones = {
+        consentimiento = {
+          subscription_id = "perfilamiento-consentimiento"
+          # OR de atributos (sintaxis de filtro de Pub/Sub) — una sola
+          # suscripción para los dos tipos de evento que le importan a
+          # Perfilamiento, en vez de una por tipo de evento.
+          filter = "attributes.tipo = \"ConsentimientoOtorgado\" OR attributes.tipo = \"ConsentimientoRevocado\""
+        }
+      }
+    }
+  }
+}
+
 # Observabilidad del ambiente (DI-008): Alloy dentro del cluster reenviando
 # a Grafana Cloud. depends_on module.gke por el mismo motivo que
 # module.api_gateway (necesita el cluster para el provider de helm); además
