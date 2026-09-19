@@ -86,7 +86,9 @@ module "secrets" {
 # consentimiento; Perfilamiento los consume para disparar el cálculo (o
 # invalidación) del perfil de riesgo de forma asíncrona (Confluence,
 # página Perfilamiento, Sección 8, decisión 2026-09-18) y publica
-# PerfilCalculado (sin consumidor todavía).
+# PerfilCalculado (sin consumidor todavía); Cotización consume solo
+# ConsentimientoRevocado para invalidar su caché de perfiles (Redis, ver
+# deploy/apps/redis — decisión 2026-09-19).
 module "pubsub" {
   source = "./modules/pubsub"
 
@@ -113,6 +115,17 @@ module "pubsub" {
           # suscripción para los dos tipos de evento que le importan a
           # Perfilamiento, en vez de una por tipo de evento.
           filter = "attributes.tipo = \"ConsentimientoOtorgado\" OR attributes.tipo = \"ConsentimientoRevocado\""
+        }
+      }
+    }
+    # Solo invalidación de caché — Cotización nunca publica en este tópico.
+    svc-cotizacion = {
+      ksa_namespace = "svc-cotizacion"
+      ksa_name      = "svc-cotizacion"
+      suscripciones = {
+        revocacion = {
+          subscription_id = "cotizacion-consentimiento-revocado"
+          filter          = "attributes.tipo = \"ConsentimientoRevocado\""
         }
       }
     }
