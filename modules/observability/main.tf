@@ -113,9 +113,45 @@ resource "helm_release" "k8s_monitoring" {
       }
     }
 
+    # Métricas de recursos de Kubernetes (CPU/memoria por pod, vía cAdvisor
+    # del kubelet) — DI-008 seguía sin esto, solo telemetría a nivel de
+    # aplicación (OTLP). Necesario para separar, durante EXP-01, si el
+    # cuello de botella es CPU en bff-web o en svc-cotizacion, no solo
+    # "algo se puso lento". Configuración tomada tal cual del ejemplo
+    # oficial del chart para esta versión exacta (charts/k8s-monitoring/
+    # docs/examples/features/cluster-metrics/default/values.yaml en el tag
+    # k8s-monitoring-4.5.2) — no adivinada. `destinations` vacío en
+    # clusterMetrics reusa automáticamente grafanaCloud (ya tiene
+    # metrics.enabled=true arriba), no hace falta declarar un destino aparte.
+    clusterMetrics = {
+      enabled   = true
+      collector = "alloy-metrics"
+    }
+
+    # kube-state-metrics: el propio ejemplo oficial del chart lo incluye
+    # junto con clusterMetrics — sin esto, las métricas de cAdvisor no
+    # tienen forma de unirse con metadata del pod (nombre del Deployment,
+    # namespace legible, etc.) en los dashboards de Grafana Cloud
+    # Kubernetes Monitoring.
+    telemetryServices = {
+      "kube-state-metrics" = {
+        deploy = true
+      }
+    }
+
     collectors = {
       alloy-receiver = {
         presets = ["deployment"]
+      }
+      # Instancia aparte de "alloy-receiver" (que corre como Deployment,
+      # solo para recibir OTLP de las apps) — "statefulset" la corre como
+      # StatefulSet (1 réplica por defecto) y "clustered" activa el
+      # clustering de Alloy, para que pueda repartirse el scraping de
+      # cAdvisor de todos los nodos entre réplicas si algún día se escala
+      # a más de una (no es un DaemonSet: no necesita un pod por nodo,
+      # scrapea el kubelet de cada nodo de forma centralizada).
+      alloy-metrics = {
+        presets = ["small", "clustered", "statefulset"]
       }
     }
   })]
