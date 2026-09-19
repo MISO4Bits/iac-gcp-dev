@@ -23,6 +23,18 @@ resource "google_service_account" "gke_nodes" {
   description  = "Cuenta de servicio de los nodos administrados por el cluster de GKE Autopilot de dev."
 }
 
+# Rol que GKE exige a una cuenta de servicio de nodos PERSONALIZADA (no a la
+# de Compute Engine por defecto): logging, métricas y lo básico del nodo.
+# Sin esto la consola de GKE marca el cluster como degradado ("Grant
+# roles/container.defaultNodeServiceAccount role to Node service account to
+# allow for non-degraded operations", visto 2026-09-19) — el módulo solo
+# le daba lectura del Artifact Registry (root main.tf), nada más.
+resource "google_project_iam_member" "gke_nodes_default_role" {
+  project = var.project_id
+  role    = "roles/container.defaultNodeServiceAccount"
+  member  = "serviceAccount:${google_service_account.gke_nodes.email}"
+}
+
 resource "google_container_cluster" "this" {
   project  = var.project_id
   name     = var.cluster_name
