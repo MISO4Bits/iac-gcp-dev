@@ -1,3 +1,8 @@
 project_id        = "solventa-dev"
 region            = "southamerica-east1"
 admin_project_id  = "solventa-admin"
+
+# Función de correos (BITS-93). Tag de la imagen publicada por el CI de fn-notificaciones
+# y alias al que responde quien contesta el correo.
+fn_notificaciones_image_tag = "sha-a5616fe"
+fn_notificaciones_reply_to  = "soporte@solventa4bits.com"
