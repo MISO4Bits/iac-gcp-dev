@@ -48,6 +48,12 @@ Terraform no puede automatizar todo — algunos valores solo existen después de
 3. **Registro NS del dominio y correo** — no aplica a este repo, ver DI-010 en Confluence ("Log de decisiones de Infraestructura").
 4. **Cuentas de servicio (GSA) de Pub/Sub**: `terraform output pubsub_service_account_emails` después de aplicar. Mismo mecanismo que el paso 2 — cada correo va en la anotación `iam.gke.io/gcp-service-account` de la KSA correspondiente en `deploy`; ya está puesto a mano en `deploy/apps/svc-core/base/serviceaccount.yaml` y `deploy/apps/svc-perfilamiento/base/serviceaccount.yaml` con los valores esperados (`svc-core-pubsub@...`, `svc-perfilamiento-pubsub@...`), confirmar contra el output real.
 
+5. **Función de correos (`modules/fn-notificaciones`, BITS-93)**: Cloud Run + suscripción push + cola de mensajes fallidos. Tras el primer `apply`:
+   - Poblar los dos secretos (el módulo deja una versión provisional `pendiente` solo para que el servicio arranque): `resend-api-key` con la clave de Resend (permiso de solo envío, restringida al dominio `notificaciones.solventa4bits.com`) y `fn-notificaciones-otlp-headers` con `Authorization=Basic <base64(instanceId:token)>` de Grafana Cloud. Con `gcloud secrets versions add <secreto> --project=solventa-dev --data-file=-`; **nunca** pegar esos valores en el repo ni en un chat. Cloud Run toma `latest` al crear una revisión nueva.
+   - La imagen sale del CI del repo `fn-notificaciones` (tags `develop` y `sha-<corto>`). Para desplegar una build: `terraform apply -var fn_notificaciones_image_tag=sha-1a2b3c4`. Pasar también `-var fn_notificaciones_reply_to=<alias>` (el alias de reenvío del dominio).
+   - `fn_notificaciones_sender_backend=logging` deja la función corriendo sin enviar nada (solo registra) mientras no haya clave real.
+   - Core necesita el rol `roles/firebaseauth.admin` (ya concedido a su cuenta `svc-core-pubsub`) para pedir el enlace de verificación a Identity Platform; confirmar el permiso mínimo exacto al probar con Identity Platform real.
+
 ## Estructura
 
 ```
@@ -66,7 +72,8 @@ iac-gcp-dev/
 │   ├── argocd/              # Argo CD (Helm) + root Application de GitOps, DI-007
 │   ├── spanner/             # 2 instancias regionales (core + services compartida) + bases de datos, DI-009
 │   ├── secrets/             # secretos de Secret Manager (solo el contenedor) + acceso por Workload Identity
-│   └── pubsub/              # tópico compartido de eventos de dominio + suscripciones, BITS-105
+│   ├── pubsub/              # tópico compartido de eventos de dominio + suscripciones, BITS-105
+│   └── fn-notificaciones/   # función de correos: Cloud Run + suscripción push (OIDC) + DLQ + secretos, BITS-93
 ├── main.tf                  # raíz: solo instancia módulos y conecta sus salidas
 ├── backend.tf
 ├── providers.tf             # incluye los providers de Kubernetes/Helm/kubectl, apuntando al cluster de modules/gke

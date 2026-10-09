@@ -1,3 +1,13 @@
+output "fn_notificaciones_url" {
+  description = "URL de Cloud Run de fn-notificaciones (sin acceso público)."
+  value       = module.fn_notificaciones.service_url
+}
+
+output "fn_notificaciones_secretos_por_poblar" {
+  description = "Secretos de la función que hay que poblar a mano con `gcloud secrets versions add`."
+  value       = module.fn_notificaciones.secret_ids
+}
+
 output "project_id" {
   description = "Proyecto de GCP del ambiente dev."
   value       = var.project_id

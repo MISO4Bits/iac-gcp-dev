@@ -16,6 +16,24 @@ variable "admin_project_id" {
   default     = "solventa-admin"
 }
 
+variable "fn_notificaciones_image_tag" {
+  description = "Tag de la imagen de fn-notificaciones a desplegar (`develop` o un `sha-<corto>` publicado por el CI de fn-notificaciones). Con un tag fijo como `develop`, Cloud Run no crea revisión nueva: para desplegar una build nueva pasa su `sha-...`."
+  type        = string
+  default     = "develop"
+}
+
+variable "fn_notificaciones_reply_to" {
+  description = "Alias al que responde quien contesta los correos (Reply-To). Vacío = sin Reply-To."
+  type        = string
+  default     = ""
+}
+
+variable "fn_notificaciones_sender_backend" {
+  description = "`resend` envía correos reales; `logging` solo registra que los habría enviado."
+  type        = string
+  default     = "resend"
+}
+
 variable "artifact_registry_repository_id" {
   description = "Nombre del repositorio de Artifact Registry compartido en admin (DI-004)."
   type        = string

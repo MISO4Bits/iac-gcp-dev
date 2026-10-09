@@ -132,6 +132,35 @@ module "pubsub" {
   }
 }
 
+# Función de envío de correos (Cloud Run, fuera del cluster): suscripción push al
+# tópico con filtro `tipo = EnviarCorreo`, cola de mensajes fallidos y sus secretos.
+# depends_on module.secrets porque ese módulo habilita la API de Secret Manager.
+module "fn_notificaciones" {
+  source = "./modules/fn-notificaciones"
+
+  project_id                   = var.project_id
+  region                       = var.region
+  topic_name                   = module.pubsub.topic_name
+  image                        = "${var.region}-docker.pkg.dev/${var.admin_project_id}/${var.artifact_registry_repository_id}/fn-notificaciones:${var.fn_notificaciones_image_tag}"
+  artifact_registry_project    = var.admin_project_id
+  artifact_registry_repository = var.artifact_registry_repository_id
+  sender_backend               = var.fn_notificaciones_sender_backend
+  reply_to                     = var.fn_notificaciones_reply_to
+  otlp_endpoint                = "https://otlp-gateway-prod-sa-east-1.grafana.net/otlp"
+
+  depends_on = [module.secrets]
+}
+
+# Core genera el enlace de verificación de correo con la API de administración de
+# Identity Platform (accounts:sendOobCode con returnOobLink). Reutiliza la cuenta de
+# servicio que ya tiene federada su KSA (una KSA solo se federa con una GSA a la vez).
+# Rol por confirmar contra el permiso mínimo exacto al probar con Identity Platform real.
+resource "google_project_iam_member" "core_identity_platform_admin" {
+  project = var.project_id
+  role    = "roles/firebaseauth.admin"
+  member  = "serviceAccount:${module.pubsub.service_account_emails["svc-core"]}"
+}
+
 # Observabilidad del ambiente (DI-008): Alloy dentro del cluster reenviando
 # a Grafana Cloud. depends_on module.gke por el mismo motivo que
 # module.api_gateway (necesita el cluster para el provider de helm); además
