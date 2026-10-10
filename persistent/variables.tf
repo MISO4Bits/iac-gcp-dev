@@ -15,3 +15,15 @@ variable "edge_domain" {
   type        = string
   default     = "dev.solventa4bits.com"
 }
+
+variable "portal_domains" {
+  description = "Dominios que sirve el portal web de clientes (fe-web): la raíz y www, DI-010."
+  type        = list(string)
+  default     = ["solventa4bits.com", "www.solventa4bits.com"]
+}
+
+variable "portal_ci_service_account" {
+  description = "Cuenta de servicio del CI (Workload Identity Federation de GitHub) que publica el build de fe-web en el bucket del portal."
+  type        = string
+  default     = "ci-image-publisher@solventa-admin.iam.gserviceaccount.com"
+}

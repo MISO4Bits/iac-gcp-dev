@@ -17,3 +17,13 @@ output "edge_certificate_status" {
   description = "Estado del certificado (PROVISIONING hasta que el DNS apunte a la IP y un Gateway real la sirva; luego ACTIVE)."
   value       = google_certificate_manager_certificate.edge.id
 }
+
+output "portal_static_ip" {
+  description = "IP estática del portal — registro A de solventa4bits.com (y de www) en Squarespace."
+  value       = google_compute_global_address.portal.address
+}
+
+output "portal_bucket" {
+  description = "Bucket donde el CI de fe-web publica el build (gs://<nombre>)."
+  value       = google_storage_bucket.portal.name
+}
