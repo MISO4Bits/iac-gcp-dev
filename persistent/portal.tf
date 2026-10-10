@@ -158,3 +158,11 @@ resource "google_compute_global_forwarding_rule" "portal_http" {
   target                = google_compute_target_http_proxy.portal.id
   load_balancing_scheme = "EXTERNAL_MANAGED"
 }
+
+# rsync consulta los metadatos del bucket (storage.buckets.get), que objectAdmin
+# no incluye. legacyBucketReader es el rol mínimo que lo trae.
+resource "google_storage_bucket_iam_member" "portal_ci_bucket_reader" {
+  bucket = google_storage_bucket.portal.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${var.portal_ci_service_account}"
+}
