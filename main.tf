@@ -14,12 +14,14 @@ module "argocd" {
   depends_on = [module.gke]
 }
 
-module "spanner" {
-  source = "./modules/spanner"
-
-  project_id = var.project_id
-  region     = var.region
-}
+# Desactivado para las pruebas E2E (2026-10-10): los servicios usan su
+# almacenamiento local (SQLite). Descomentar junto con los outputs de Spanner.
+# module "spanner" {
+#   source = "./modules/spanner"
+#
+#   project_id = var.project_id
+#   region     = var.region
+# }
 
 # API Gateway del ambiente (DI-011) — Apache APISIX dentro del cluster.
 # depends_on explícito porque el módulo solo usa el provider de helm (no
@@ -76,6 +78,14 @@ module "secrets" {
       secret_id     = "identity-platform-api-key"
       ksa_namespace = "bff-web"
       ksa_name      = "bff-web"
+    }
+    # Mismo secreto que bff-web (la API key es del proyecto de Identity
+    # Platform, no de un canal): solo agrega su propia GSA + enlace de KSA.
+    bff-mobile-secrets = {
+      secret_id     = "identity-platform-api-key"
+      ksa_namespace = "bff-mobile"
+      ksa_name      = "bff-mobile"
+      crear_secreto = false
     }
   }
 }

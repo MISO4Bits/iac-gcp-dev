@@ -17,6 +17,9 @@ variable "secrets" {
     secret_id     = string
     ksa_namespace = string
     ksa_name      = string
+    # false cuando otra entrada del mapa ya crea ese mismo secreto (varios
+    # servicios leen el mismo valor, p. ej. la API key de Identity Platform).
+    crear_secreto = optional(bool, true)
   }))
   default = {}
 }

@@ -22,7 +22,7 @@ resource "google_project_service" "secretmanager" {
 }
 
 resource "google_secret_manager_secret" "this" {
-  for_each = var.secrets
+  for_each = { for k, v in var.secrets : k => v if v.crear_secreto }
 
   project   = var.project_id
   secret_id = each.value.secret_id
@@ -47,9 +47,11 @@ resource "google_secret_manager_secret_iam_member" "reader" {
   for_each = var.secrets
 
   project   = var.project_id
-  secret_id = google_secret_manager_secret.this[each.key].secret_id
+  secret_id = each.value.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.reader[each.key].email}"
+
+  depends_on = [google_secret_manager_secret.this]
 }
 
 resource "google_service_account_iam_member" "workload_identity" {

@@ -38,15 +38,16 @@ output "argocd_namespace" {
   value       = module.argocd.namespace
 }
 
-output "spanner_core_database" {
-  description = "Instancia y base de datos de Spanner de CoreTransaccional."
-  value       = "${module.spanner.core_instance_name}/${module.spanner.core_database_name}"
-}
-
-output "spanner_services_databases" {
-  description = "Instancia compartida de Spanner y sus bases de datos por servicio."
-  value       = "${module.spanner.services_instance_name}: ${join(", ", module.spanner.services_database_names)}"
-}
+# Spanner desactivado para las pruebas E2E (ver main.tf).
+# output "spanner_core_database" {
+#   description = "Instancia y base de datos de Spanner de CoreTransaccional."
+#   value       = "${module.spanner.core_instance_name}/${module.spanner.core_database_name}"
+# }
+#
+# output "spanner_services_databases" {
+#   description = "Instancia compartida de Spanner y sus bases de datos por servicio."
+#   value       = "${module.spanner.services_instance_name}: ${join(", ", module.spanner.services_database_names)}"
+# }
 
 output "secret_reader_service_account_emails" {
   description = "Correo de la GSA dedicada a cada secreto — pegar en la anotación `iam.gke.io/gcp-service-account` de la KSA correspondiente en `deploy`."
