@@ -82,13 +82,16 @@ module "secrets" {
 
 # Bus de eventos de dominio (mensajería, ver CLAUDE.md): tópico compartido
 # "solventa-dominio" + una suscripción de pull por consumidor. Hoy: Core
-# publica ConsentimientoOtorgado/ConsentimientoRevocado al otorgar/revocar
-# consentimiento; Perfilamiento los consume para disparar el cálculo (o
-# invalidación) del perfil de riesgo de forma asíncrona (Confluence,
-# página Perfilamiento, Sección 8, decisión 2026-09-18) y publica
-# PerfilCalculado (sin consumidor todavía); Cotización consume solo
-# ConsentimientoRevocado para invalidar su caché de perfiles (Redis, ver
-# deploy/apps/redis — decisión 2026-09-19).
+# publica ClienteRegistrado (con el consentimiento de cada fuente) al
+# registrarse y ConsentimientoOtorgado/ConsentimientoRevocado (de una sola
+# fuente) al cambiar un consentimiento; Perfilamiento los consume para
+# consultar, guardar o borrar los datos de esa fuente y recalcular el perfil de
+# riesgo de forma asíncrona (Confluence, página Perfilamiento, Sección 8,
+# decisión 2026-09-18) y publica PerfilCalculado/PerfilInvalidado; Cotización
+# consume ConsentimientoRevocado y esos dos para invalidar su caché de perfiles
+# (Redis, ver deploy/apps/redis — decisión 2026-09-19): invalidar también al
+# terminar Perfilamiento evita volver a guardar un perfil viejo si Cotización lo
+# leyó antes de que se recalculara.
 module "pubsub" {
   source = "./modules/pubsub"
 
@@ -101,8 +104,8 @@ module "pubsub" {
       ksa_name      = "svc-core"
       publica       = true
     }
-    # Perfilamiento publica (PerfilCalculado, sin consumidor todavía) y
-    # además consume ConsentimientoOtorgado/ConsentimientoRevocado — las dos
+    # Perfilamiento publica (PerfilCalculado/PerfilInvalidado) y además
+    # consume ClienteRegistrado/ConsentimientoOtorgado/ConsentimientoRevocado — las dos
     # cosas en la misma GSA (una KSA solo se federa con una GSA a la vez).
     svc-perfilamiento = {
       ksa_namespace = "svc-perfilamiento"
@@ -112,20 +115,21 @@ module "pubsub" {
         consentimiento = {
           subscription_id = "perfilamiento-consentimiento"
           # OR de atributos (sintaxis de filtro de Pub/Sub) — una sola
-          # suscripción para los dos tipos de evento que le importan a
+          # suscripción para los tipos de evento que le importan a
           # Perfilamiento, en vez de una por tipo de evento.
-          filter = "attributes.tipo = \"ConsentimientoOtorgado\" OR attributes.tipo = \"ConsentimientoRevocado\""
+          filter = "attributes.tipo = \"ClienteRegistrado\" OR attributes.tipo = \"ConsentimientoOtorgado\" OR attributes.tipo = \"ConsentimientoRevocado\""
         }
       }
     }
     # Solo invalidación de caché — Cotización nunca publica en este tópico.
+    # Cambiar el filtro de una suscripción existente obliga a recrearla.
     svc-cotizacion = {
       ksa_namespace = "svc-cotizacion"
       ksa_name      = "svc-cotizacion"
       suscripciones = {
         revocacion = {
           subscription_id = "cotizacion-consentimiento-revocado"
-          filter          = "attributes.tipo = \"ConsentimientoRevocado\""
+          filter          = "attributes.tipo = \"ConsentimientoRevocado\" OR attributes.tipo = \"PerfilCalculado\" OR attributes.tipo = \"PerfilInvalidado\""
         }
       }
     }
