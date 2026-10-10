@@ -62,3 +62,9 @@ variable "max_delivery_attempts" {
   type        = number
   default     = 5
 }
+
+variable "ci_service_account" {
+  description = "Cuenta de servicio del CI (Workload Identity Federation de GitHub) que despliega nuevas imágenes de la función desde la rama develop. Solo puede actualizar este servicio de Cloud Run."
+  type        = string
+  default     = "ci-image-publisher@solventa-admin.iam.gserviceaccount.com"
+}

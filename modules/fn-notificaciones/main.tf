@@ -188,6 +188,12 @@ resource "google_cloud_run_v2_service" "this" {
     }
   }
 
+  # La imagen la despliega el CI (gcloud run services update): Terraform solo la usa
+  # al crear el servicio y no la revierte después. `client*` los rellena gcloud.
+  lifecycle {
+    ignore_changes = [template[0].containers[0].image, client, client_version]
+  }
+
   depends_on = [
     google_project_service.run,
     google_artifact_registry_repository_iam_member.run_lee_imagenes,
@@ -279,4 +285,22 @@ resource "google_pubsub_subscription_iam_member" "dlq_suscriptor" {
   subscription = google_pubsub_subscription.this.name
   role         = "roles/pubsub.subscriber"
   member       = local.pubsub_agent
+}
+
+# --- Despliegue desde el CI ---
+# El CI de fn-notificaciones (rama develop) actualiza la imagen con
+# `gcloud run services update`. Permisos mínimos: solo este servicio, y poder
+# actuar como su cuenta de ejecución (Cloud Run lo exige al cambiar de revisión).
+resource "google_cloud_run_v2_service_iam_member" "ci_despliega" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.this.name
+  role     = "roles/run.developer"
+  member   = "serviceAccount:${var.ci_service_account}"
+}
+
+resource "google_service_account_iam_member" "ci_actua_como_runtime" {
+  service_account_id = google_service_account.runtime.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${var.ci_service_account}"
 }
