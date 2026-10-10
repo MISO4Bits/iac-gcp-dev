@@ -100,4 +100,11 @@ resource "google_pubsub_subscription_iam_member" "subscriber" {
   subscription = google_pubsub_subscription.this[each.key].name
   role         = "roles/pubsub.subscriber"
   member       = "serviceAccount:${google_service_account.this[each.value.sa_key].email}"
+
+  # Si la suscripción se reemplaza (p. ej. al cambiar su filtro), GCP borra su política
+  # de acceso junto con ella. El nombre no cambia, así que sin esto Terraform cree que
+  # el permiso sigue ahí y el consumidor queda sin acceso, sin ningún error visible.
+  lifecycle {
+    replace_triggered_by = [google_pubsub_subscription.this[each.key]]
+  }
 }
