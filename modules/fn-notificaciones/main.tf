@@ -76,38 +76,17 @@ resource "google_service_account_iam_member" "pubsub_firma_oidc" {
   member             = local.pubsub_agent
 }
 
-# --- secretos (solo el contenedor; el valor se sube a mano) ---
-
-resource "google_secret_manager_secret" "this" {
-  for_each = local.secretos
-
-  project   = var.project_id
-  secret_id = each.value
-
-  replication {
-    auto {}
-  }
-}
-
-# Valor provisional para que el primer despliegue arranque: Cloud Run falla si el secreto
-# no tiene ninguna versión. No es un secreto real; el valor verdadero se sube después con
-# `gcloud secrets versions add` y pasa a ser `latest` sin que Terraform lo toque.
-resource "google_secret_manager_secret_version" "provisional" {
-  for_each = local.secretos
-
-  secret      = google_secret_manager_secret.this[each.key].id
-  secret_data = "pendiente"
-
-  lifecycle {
-    ignore_changes = [secret_data, enabled]
-  }
-}
+# --- secretos ---
+# Los contenedores (y sus valores, subidos a mano con `gcloud secrets versions add`) viven fuera
+# de este módulo, en persistent/secretos.tf, para sobrevivir al destroy del ambiente. Aquí solo
+# se le da acceso a la función. Cloud Run falla si un secreto no tiene ninguna versión: en un
+# proyecto nuevo, subir los valores antes de aplicar.
 
 resource "google_secret_manager_secret_iam_member" "lector" {
   for_each = local.secretos
 
   project   = var.project_id
-  secret_id = google_secret_manager_secret.this[each.key].secret_id
+  secret_id = each.value
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.runtime.email}"
 }
@@ -179,7 +158,7 @@ resource "google_cloud_run_v2_service" "this" {
           name = env.key
           value_source {
             secret_key_ref {
-              secret  = google_secret_manager_secret.this[env.key].secret_id
+              secret  = local.secretos[env.key]
               version = "latest"
             }
           }
@@ -198,7 +177,6 @@ resource "google_cloud_run_v2_service" "this" {
     google_project_service.run,
     google_artifact_registry_repository_iam_member.run_lee_imagenes,
     google_secret_manager_secret_iam_member.lector,
-    google_secret_manager_secret_version.provisional,
   ]
 }
 

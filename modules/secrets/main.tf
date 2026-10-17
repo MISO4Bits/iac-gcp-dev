@@ -18,7 +18,8 @@ resource "google_project_service" "secretmanager" {
   project = var.project_id
   service = "secretmanager.googleapis.com"
 
-  disable_on_destroy = true
+  # Los secretos viven en persistent/ y necesitan la API habilitada.
+  disable_on_destroy = false
 }
 
 resource "google_secret_manager_secret" "this" {

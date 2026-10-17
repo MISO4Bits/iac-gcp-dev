@@ -20,5 +20,5 @@ output "dead_letter_subscription_name" {
 
 output "secret_ids" {
   description = "Secretos que hay que poblar a mano con `gcloud secrets versions add` (resend-api-key y fn-notificaciones-otlp-headers)."
-  value       = [for s in google_secret_manager_secret.this : s.secret_id]
+  value       = values(local.secretos)
 }

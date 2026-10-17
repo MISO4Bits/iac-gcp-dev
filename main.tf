@@ -78,6 +78,7 @@ module "secrets" {
       secret_id     = "identity-platform-api-key"
       ksa_namespace = "bff-web"
       ksa_name      = "bff-web"
+      crear_secreto = false # el contenedor vive en persistent/secretos.tf
     }
     # Mismo secreto que bff-web (la API key es del proyecto de Identity
     # Platform, no de un canal): solo agrega su propia GSA + enlace de KSA.

@@ -4,8 +4,8 @@ output "namespace" {
 }
 
 output "grafana_cloud_token_secret_id" {
-  description = "Nombre del secreto en Secret Manager — subir el valor real a mano después de aplicar (ver README)."
-  value       = google_secret_manager_secret.grafana_cloud_token.secret_id
+  description = "Nombre del secreto en Secret Manager (creado en persistent/secretos.tf) del que se lee el token."
+  value       = data.google_secret_manager_secret_version.grafana_cloud_token.secret
 }
 
 output "otlp_receiver_note" {

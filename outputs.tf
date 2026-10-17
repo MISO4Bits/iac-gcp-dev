@@ -55,8 +55,8 @@ output "secret_reader_service_account_emails" {
 }
 
 output "identity_platform_secret_id" {
-  description = "Nombre del secreto en Secret Manager donde va la API key de Identity Platform — subir el valor a mano después de aplicar (ver README)."
-  value       = module.secrets.secret_ids["bff-web-secrets"]
+  description = "Nombre del secreto en Secret Manager con la API key de Identity Platform (contenedor en persistent/secretos.tf; el valor se sube a mano una sola vez)."
+  value       = "identity-platform-api-key"
 }
 
 output "pubsub_topic_name" {

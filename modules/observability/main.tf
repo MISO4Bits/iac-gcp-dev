@@ -11,20 +11,12 @@
 # la decisión de modules/secrets). Por eso aquí se lee la última versión del
 # secreto vía data source y se crea un Secret de Kubernetes aparte,
 # específicamente para lo que este chart necesita.
-resource "google_secret_manager_secret" "grafana_cloud_token" {
-  project   = var.project_id
-  secret_id = "grafana-cloud-otlp-token"
-
-  replication {
-    auto {}
-  }
-}
-
+#
+# El contenedor del secreto NO se crea aquí: vive en persistent/secretos.tf
+# para sobrevivir al destroy del ambiente (no hay que volver a subir el token).
 data "google_secret_manager_secret_version" "grafana_cloud_token" {
   project = var.project_id
-  secret  = google_secret_manager_secret.grafana_cloud_token.secret_id
-
-  depends_on = [google_secret_manager_secret.grafana_cloud_token]
+  secret  = "grafana-cloud-otlp-token"
 }
 
 resource "kubernetes_namespace_v1" "observability" {

@@ -30,3 +30,9 @@ Después de aplicar, `terraform output edge_static_ip` da la IP a usar en el reg
 El `Gateway` que sirve este tráfico (hoy en `deploy/apps/bff-web/base/gateway.yaml`, mañana en `deploy/apps/api-gateway/`) referencia el nombre de esta IP (`bff-web-dev` — nombre físico heredado, ver comentario en `main.tf`) y el nombre del `CertificateMap` (`edge-dev-map`) directamente — son nombres fijos, no hace falta pasarlos por ninguna otra parte.
 
 **Nota histórica**: estos recursos se llamaron originalmente `bff-web-*` (pensando en una dirección propia para `bff-web`, antes de DI-011). Se renombraron a `edge-*` el 2026-09-12 vía `terraform state mv` (conservando la misma IP física, `34.120.130.162`) al decidir que el API Gateway corre dentro del cluster — el certificado y el mapa sí se recrearon (cambio de dominio de `bff-web.dev.solventa4bits.com` a `dev.solventa4bits.com`), la IP no.
+
+## Secretos con valor manual (`secretos.tf`)
+
+Desde 2026-10-16 los contenedores de los secretos cuyo valor se sube a mano viven aquí, no en la raíz: `identity-platform-api-key`, `grafana-cloud-otlp-token`, `resend-api-key` y `fn-notificaciones-otlp-headers`. Así un `terraform destroy` de la raíz no los borra y no hay que volver a subir los valores en cada sesión. Los módulos de la raíz solo les dan acceso (IAM) o leen su valor.
+
+Proyecto nuevo, en este orden: aplicar `persistent/`, subir los valores con `gcloud secrets versions add <secreto> --project=solventa-dev --data-file=...` (Cloud Run falla si un secreto no tiene versión) y luego aplicar la raíz.

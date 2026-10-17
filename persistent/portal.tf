@@ -4,8 +4,11 @@
 # en línea aunque el cluster esté apagado. Decisión: DI-012.
 #
 # Despliegue: el CI de fe-web (rama develop) hace `ng build` y sincroniza la
-# salida al bucket. index.html se sube con Cache-Control: no-cache y los assets
+# salida al bucket. index.html se sube con Cache-Control: no-store y los assets
 # con hash como immutable — por eso no hace falta invalidar la caché de la CDN.
+# Debe ser no-store y no no-cache: con no-cache la CDN lo revalida y la respuesta
+# que el balanceador entrega para una ruta de Angular (/ingreso al recargar)
+# sale con el cuerpo vacío (BITS-208).
 
 resource "google_project_service" "compute" {
   project = var.project_id
