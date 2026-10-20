@@ -89,6 +89,33 @@ resource "helm_release" "apisix" {
       name  = "etcd.enabled"
       value = "false"
     },
+    # Sin requests Autopilot asigna 500m/2Gi (4Gi el ingress-controller, que
+    # aplica el mismo `resources` a sus dos contenedores: controller + adc).
+    # Uso medido: apisix ~260Mi, ingress-controller ~107Mi en total.
+    {
+      name  = "resources.requests.cpu"
+      value = "100m"
+    },
+    {
+      name  = "resources.requests.memory"
+      value = "384Mi"
+    },
+    {
+      name  = "resources.limits.memory"
+      value = "768Mi"
+    },
+    {
+      name  = "ingress-controller.deployment.resources.requests.cpu"
+      value = "50m"
+    },
+    {
+      name  = "ingress-controller.deployment.resources.requests.memory"
+      value = "128Mi"
+    },
+    {
+      name  = "ingress-controller.deployment.resources.limits.memory"
+      value = "256Mi"
+    },
     # NO es apisix.deployment.mode=standalone (ese es el modo file-driven,
     # con role=data_plane y el Admin API deshabilitado — no sirve para el
     # ingress-controller). El modo API-driven que sí necesita el

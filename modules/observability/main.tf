@@ -125,15 +125,35 @@ resource "helm_release" "k8s_monitoring" {
     # tienen forma de unirse con metadata del pod (nombre del Deployment,
     # namespace legible, etc.) en los dashboards de Grafana Cloud
     # Kubernetes Monitoring.
+    # Requests ajustados al uso real (Autopilot asigna 500m/2Gi por pod si no
+    # hay `resources`): KSM ~27Mi, operator ~54Mi, receiver ~62Mi,
+    # alloy-metrics ~166Mi. El límite de memoria deja margen de bursting.
     telemetryServices = {
       "kube-state-metrics" = {
         deploy = true
+        resources = {
+          requests = { cpu = "50m", memory = "64Mi" }
+          limits   = { memory = "256Mi" }
+        }
+      }
+    }
+
+    "alloy-operator" = {
+      resources = {
+        requests = { cpu = "50m", memory = "96Mi" }
+        limits   = { memory = "192Mi" }
       }
     }
 
     collectors = {
       alloy-receiver = {
         presets = ["deployment"]
+        alloy = {
+          resources = {
+            requests = { cpu = "100m", memory = "192Mi" }
+            limits   = { memory = "512Mi" }
+          }
+        }
       }
       # Instancia aparte de "alloy-receiver" (que corre como Deployment,
       # solo para recibir OTLP de las apps) — "statefulset" la corre como
@@ -144,6 +164,12 @@ resource "helm_release" "k8s_monitoring" {
       # scrapea el kubelet de cada nodo de forma centralizada).
       alloy-metrics = {
         presets = ["small", "clustered", "statefulset"]
+        alloy = {
+          resources = {
+            requests = { cpu = "100m", memory = "256Mi" }
+            limits   = { memory = "512Mi" }
+          }
+        }
       }
     }
   })]
