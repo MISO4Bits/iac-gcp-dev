@@ -147,6 +147,18 @@ module "pubsub" {
   }
 }
 
+# Fotos de identidad de los clientes (cédula por ambas caras y selfie, BITS-275): bucket
+# privado al que solo accede svc-core. Se destruye con el clúster (force_destroy) porque los
+# metadatos de las evidencias viven en la base SQLite del pod, que también es efímera.
+module "evidencias" {
+  source = "./modules/evidencias"
+
+  project_id            = var.project_id
+  region                = var.region
+  service_account_email = module.pubsub.service_account_emails["svc-core"]
+  force_destroy         = true
+}
+
 # Función de envío de correos (Cloud Run, fuera del cluster): suscripción push al
 # tópico con filtro `tipo = EnviarCorreo`, cola de mensajes fallidos y sus secretos.
 # depends_on module.secrets porque ese módulo habilita la API de Secret Manager.

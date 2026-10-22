@@ -73,6 +73,7 @@ iac-gcp-dev/
 │   ├── spanner/             # 2 instancias regionales (core + services compartida) + bases de datos, DI-009
 │   ├── secrets/             # secretos de Secret Manager (solo el contenedor) + acceso por Workload Identity
 │   ├── pubsub/              # tópico compartido de eventos de dominio + suscripciones, BITS-105
+│   ├── evidencias/          # bucket privado de las fotos de identidad (cédula y selfie) + acceso solo para svc-core, BITS-275
 │   └── fn-notificaciones/   # función de correos: Cloud Run + suscripción push (OIDC) + DLQ + secretos, BITS-93
 ├── main.tf                  # raíz: solo instancia módulos y conecta sus salidas
 ├── backend.tf

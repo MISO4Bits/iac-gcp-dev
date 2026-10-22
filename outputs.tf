@@ -64,6 +64,11 @@ output "pubsub_topic_name" {
   value       = module.pubsub.topic_name
 }
 
+output "evidencias_bucket_name" {
+  description = "Bucket privado de las fotos de identidad — va en CORE_ALMACEN_BUCKET del despliegue de svc-core, en el repo `deploy`."
+  value       = module.evidencias.bucket_name
+}
+
 output "pubsub_service_account_emails" {
   description = "Correo de la GSA dedicada a cada componente (por clave del mapa `service_accounts` en main.tf) — pegar en la anotación `iam.gke.io/gcp-service-account` de la KSA correspondiente en `deploy`."
   value       = module.pubsub.service_account_emails
