@@ -114,6 +114,14 @@ module "pubsub" {
       ksa_namespace = "svc-core"
       ksa_name      = "svc-core"
       publica       = true
+      # Core borra la póliza pendiente de la cotización anterior cuando el cliente vuelve a
+      # cotizar (BITS-101): consume CotizacionCreada / CotizacionEliminada de Cotización.
+      suscripciones = {
+        cotizacion = {
+          subscription_id = "core-cotizacion"
+          filter          = "attributes.tipo = \"CotizacionCreada\" OR attributes.tipo = \"CotizacionEliminada\""
+        }
+      }
     }
     # Perfilamiento publica (PerfilCalculado/PerfilInvalidado) y además
     # consume ClienteRegistrado/ConsentimientoOtorgado/ConsentimientoRevocado — las dos
@@ -132,11 +140,13 @@ module "pubsub" {
         }
       }
     }
-    # Solo invalidación de caché — Cotización nunca publica en este tópico.
+    # Consume para invalidar su caché de perfiles y publica CotizacionCreada /
+    # CotizacionEliminada (BITS-101) para que Core borre la póliza pendiente anterior.
     # Cambiar el filtro de una suscripción existente obliga a recrearla.
     svc-cotizacion = {
       ksa_namespace = "svc-cotizacion"
       ksa_name      = "svc-cotizacion"
+      publica       = true
       suscripciones = {
         revocacion = {
           subscription_id = "cotizacion-consentimiento-revocado"
