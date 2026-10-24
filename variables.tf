@@ -22,6 +22,12 @@ variable "fn_notificaciones_image_tag" {
   default     = "develop"
 }
 
+variable "fn_documentos_image_tag" {
+  description = "Tag de la imagen de fn-documentos a desplegar (`develop` o un `sha-<corto>` publicado por el CI de fn-documentos)."
+  type        = string
+  default     = "develop"
+}
+
 variable "fn_notificaciones_reply_to" {
   description = "Alias al que responde quien contesta los correos (Reply-To). Vacío = sin Reply-To."
   type        = string

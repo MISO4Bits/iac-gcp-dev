@@ -91,6 +91,15 @@ resource "google_secret_manager_secret_iam_member" "lector" {
   member    = "serviceAccount:${google_service_account.runtime.email}"
 }
 
+# Lectura del bucket de adjuntos (el PDF de la póliza que fn-documentos deja allí).
+resource "google_storage_bucket_iam_member" "lee_adjuntos" {
+  count = var.adjuntos_bucket == "" ? 0 : 1
+
+  bucket = var.adjuntos_bucket
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.runtime.email}"
+}
+
 # --- Cloud Run ---
 
 resource "google_cloud_run_v2_service" "this" {
@@ -142,6 +151,13 @@ resource "google_cloud_run_v2_service" "this" {
       env {
         name  = "FN_REPLY_TO"
         value = var.reply_to
+      }
+      dynamic "env" {
+        for_each = var.adjuntos_bucket == "" ? [] : [var.adjuntos_bucket]
+        content {
+          name  = "FN_ADJUNTOS_BUCKET"
+          value = env.value
+        }
       }
       env {
         name  = "FN_OTEL_ENABLED"

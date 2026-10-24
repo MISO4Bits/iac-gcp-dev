@@ -51,6 +51,12 @@ variable "otlp_endpoint" {
   type        = string
 }
 
+variable "adjuntos_bucket" {
+  description = "Bucket del que la función puede leer los archivos que los correos llevan adjuntos (el de los PDF de fn-documentos). Vacío = sin adjuntos."
+  type        = string
+  default     = ""
+}
+
 variable "max_instances" {
   description = "Tope de instancias. El volumen de correos es bajo; el tope también protege el límite diario del plan gratuito de Resend."
   type        = number

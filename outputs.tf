@@ -93,3 +93,13 @@ output "waf_security_policy_name" {
   description = "Nombre de la Cloud Armor Security Policy — el GCPBackendPolicy en deploy/apps/api-gateway/ la referencia por spec.default.securityPolicy."
   value       = module.waf.security_policy_name
 }
+
+output "fn_documentos_url" {
+  description = "URL de Cloud Run de fn-documentos (sin acceso público). Va en CORE_DOCUMENTO_BASE_URL de svc-core (deploy/apps/svc-core)."
+  value       = module.fn_documentos.service_url
+}
+
+output "fn_documentos_bucket" {
+  description = "Bucket privado de los PDF de las pólizas (FN_ADJUNTOS_BUCKET de fn-notificaciones)."
+  value       = module.fn_documentos.bucket_name
+}

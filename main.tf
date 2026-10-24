@@ -114,12 +114,13 @@ module "pubsub" {
       ksa_namespace = "svc-core"
       ksa_name      = "svc-core"
       publica       = true
-      # Core borra la póliza pendiente de la cotización anterior cuando el cliente vuelve a
-      # cotizar (BITS-101): consume CotizacionCreada / CotizacionEliminada de Cotización.
+      # BITS-101: Core borra la póliza pendiente de la cotización anterior cuando el cliente
+      # vuelve a cotizar (CotizacionCreada / CotizacionEliminada, de Cotización) y encarga el
+      # correo con el PDF cuando fn-documentos lo deja en el bucket (DocumentoPolizaGenerado).
       suscripciones = {
-        cotizacion = {
-          subscription_id = "core-cotizacion"
-          filter          = "attributes.tipo = \"CotizacionCreada\" OR attributes.tipo = \"CotizacionEliminada\""
+        polizas = {
+          subscription_id = "core-polizas"
+          filter          = "attributes.tipo = \"CotizacionCreada\" OR attributes.tipo = \"CotizacionEliminada\" OR attributes.tipo = \"DocumentoPolizaGenerado\""
         }
       }
     }
@@ -184,6 +185,27 @@ module "fn_notificaciones" {
   sender_backend               = var.fn_notificaciones_sender_backend
   reply_to                     = var.fn_notificaciones_reply_to
   otlp_endpoint                = "https://otlp-gateway-prod-sa-east-1.grafana.net/otlp"
+  # BITS-101: el correo de la póliza lleva el PDF que fn-documentos deja en este bucket.
+  adjuntos_bucket = module.fn_documentos.bucket_name
+
+  depends_on = [module.secrets]
+}
+
+# Función de documentos (Cloud Run, fuera del cluster): genera el PDF de la póliza al recibir
+# PolizaEmitida, lo guarda en un bucket privado y entrega enlaces firmados a Core. Reutiliza el
+# secreto de credenciales OTLP de fn-notificaciones (por eso depende de module.secrets).
+module "fn_documentos" {
+  source = "./modules/fn-documentos"
+
+  project_id                   = var.project_id
+  region                       = var.region
+  topic_name                   = module.pubsub.topic_name
+  image                        = "${var.region}-docker.pkg.dev/${var.admin_project_id}/${var.artifact_registry_repository_id}/fn-documentos:${var.fn_documentos_image_tag}"
+  artifact_registry_project    = var.admin_project_id
+  artifact_registry_repository = var.artifact_registry_repository_id
+  otlp_endpoint                = "https://otlp-gateway-prod-sa-east-1.grafana.net/otlp"
+  # Core la llama por HTTP (con su cuenta de servicio) para pedir el enlace del documento.
+  invoker_service_accounts = [module.pubsub.service_account_emails["svc-core"]]
 
   depends_on = [module.secrets]
 }
