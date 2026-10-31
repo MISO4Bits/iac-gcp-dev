@@ -18,6 +18,16 @@ output "dead_letter_subscription_name" {
   value       = google_pubsub_subscription.dlq.name
 }
 
+output "push_subscription_name" {
+  description = "Suscripción push que invoca la ruta /push de la función (avisos push, BITS-229)."
+  value       = google_pubsub_subscription.push.name
+}
+
+output "push_dead_letter_subscription_name" {
+  description = "Suscripción donde se retienen los avisos push que agotaron sus entregas."
+  value       = google_pubsub_subscription.push_dlq.name
+}
+
 output "secret_ids" {
   description = "Secretos que hay que poblar a mano con `gcloud secrets versions add` (resend-api-key y fn-notificaciones-otlp-headers)."
   value       = values(local.secretos)

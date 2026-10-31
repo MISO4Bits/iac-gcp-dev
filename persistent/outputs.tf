@@ -27,3 +27,13 @@ output "portal_bucket" {
   description = "Bucket donde el CI de fe-web publica el build (gs://<nombre>)."
   value       = google_storage_bucket.portal.name
 }
+
+output "firebase_android_app_id" {
+  description = "ID de la app Android en Firebase (avisos push, BITS-229)."
+  value       = google_firebase_android_app.movil.app_id
+}
+
+output "google_services_json" {
+  description = "Contenido de google-services.json para fe-mobile (guardar en fe-mobile/app/google-services.json). `terraform output -raw google_services_json`."
+  value       = base64decode(data.google_firebase_android_app_config.movil.config_file_contents)
+}

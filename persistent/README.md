@@ -36,3 +36,14 @@ El `Gateway` que sirve este tráfico (hoy en `deploy/apps/bff-web/base/gateway.y
 Desde 2026-10-16 los contenedores de los secretos cuyo valor se sube a mano viven aquí, no en la raíz: `identity-platform-api-key`, `grafana-cloud-otlp-token`, `resend-api-key` y `fn-notificaciones-otlp-headers`. Así un `terraform destroy` de la raíz no los borra y no hay que volver a subir los valores en cada sesión. Los módulos de la raíz solo les dan acceso (IAM) o leen su valor.
 
 Proyecto nuevo, en este orden: aplicar `persistent/`, subir los valores con `gcloud secrets versions add <secreto> --project=solventa-dev --data-file=...` (Cloud Run falla si un secreto no tiene versión) y luego aplicar la raíz.
+
+## App de Firebase para los avisos push (`firebase.tf`)
+
+Desde BITS-229 este estado también registra la app Android (`com.solventa4bits.movil`) en Firebase y entrega `google-services.json`. Vive aquí para que su `app_id` no cambie con cada ciclo de destroy de la raíz. Tiene `deletion_policy = "ABANDON"`: aunque alguien destruya este estado, Firebase no borra la app.
+
+```shell
+terraform apply
+terraform output -raw google_services_json > ../../fe-mobile/app/google-services.json
+```
+
+El archivo no es un secreto (su clave de API queda restringida a la app), pero fe-mobile lo versiona según lo que decida ese repo. Si el `plan` pide crear `google_firebase_project`, no se crea: Firebase ya está en el proyecto, hay que importarlo.

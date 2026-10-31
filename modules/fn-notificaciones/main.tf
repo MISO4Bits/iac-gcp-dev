@@ -2,10 +2,14 @@
 # evento). Cloud Run sin acceso público: la única identidad que puede invocarla es la
 # cuenta de servicio de la suscripción push de Pub/Sub.
 #
-#   Core --publica EnviarCorreo--> tópico solventa-dominio --push (OIDC)--> Cloud Run
+#   Core --publica EnviarCorreo--> tópico solventa-dominio --push (OIDC)--> Cloud Run  POST /
+#   Core --publica EnviarPush----> tópico solventa-dominio --push (OIDC)--> Cloud Run  POST /push
 #                                                                 | 5 entregas fallidas
 #                                                                 v
 #                                                   tópico de mensajes fallidos (DLQ)
+#
+# Los avisos push (BITS-229) salen por Firebase Cloud Messaging con las credenciales de la cuenta
+# de servicio de la función, sin llaves: solo necesita el rol de mensajería de Firebase.
 #
 # La función no lee Secret Manager por su cuenta: Cloud Run inyecta los dos secretos
 # como variables de entorno al iniciar. Este módulo crea solo los contenedores de los
@@ -91,6 +95,14 @@ resource "google_secret_manager_secret_iam_member" "lector" {
   member    = "serviceAccount:${google_service_account.runtime.email}"
 }
 
+# Mandar avisos push por Firebase Cloud Messaging (BITS-229). La función no guarda estado ni
+# lee nada de Firebase: solo envía.
+resource "google_project_iam_member" "envia_push" {
+  project = var.project_id
+  role    = "roles/firebasecloudmessaging.admin"
+  member  = "serviceAccount:${google_service_account.runtime.email}"
+}
+
 # Lectura del bucket de adjuntos (el PDF de la póliza que fn-documentos deja allí).
 resource "google_storage_bucket_iam_member" "lee_adjuntos" {
   count = var.adjuntos_bucket == "" ? 0 : 1
@@ -152,6 +164,14 @@ resource "google_cloud_run_v2_service" "this" {
         name  = "FN_REPLY_TO"
         value = var.reply_to
       }
+      env {
+        name  = "FN_PUSH_BACKEND"
+        value = var.push_backend
+      }
+      env {
+        name  = "FN_FCM_PROJECT_ID"
+        value = var.project_id
+      }
       dynamic "env" {
         for_each = var.adjuntos_bucket == "" ? [] : [var.adjuntos_bucket]
         content {
@@ -193,6 +213,7 @@ resource "google_cloud_run_v2_service" "this" {
     google_project_service.run,
     google_artifact_registry_repository_iam_member.run_lee_imagenes,
     google_secret_manager_secret_iam_member.lector,
+    google_project_iam_member.envia_push,
   ]
 }
 
@@ -277,6 +298,83 @@ resource "google_pubsub_topic_iam_member" "dlq_publicador" {
 resource "google_pubsub_subscription_iam_member" "dlq_suscriptor" {
   project      = var.project_id
   subscription = google_pubsub_subscription.this.name
+  role         = "roles/pubsub.subscriber"
+  member       = local.pubsub_agent
+}
+
+# --- avisos push (BITS-229) ---
+# Misma función, otra ruta: una suscripción propia filtrada por EnviarPush entrega en `/push`.
+# Cola de mensajes fallidos aparte para inspeccionar los avisos sin mezclarlos con los correos.
+
+resource "google_pubsub_topic" "push_dlq" {
+  project = var.project_id
+  name    = "${var.topic_name}-notificaciones-push-dlq"
+}
+
+resource "google_pubsub_subscription" "push_dlq" {
+  project = var.project_id
+  name    = "${var.topic_name}-notificaciones-push-dlq"
+  topic   = google_pubsub_topic.push_dlq.name
+
+  message_retention_duration = "604800s"
+
+  expiration_policy {
+    ttl = ""
+  }
+}
+
+resource "google_pubsub_subscription" "push" {
+  project = var.project_id
+  name    = "notificaciones-enviar-push"
+  topic   = var.topic_name
+
+  # Solo los avisos push; el resto del tópico no es de esta ruta.
+  filter = "attributes.tipo = \"EnviarPush\""
+
+  ack_deadline_seconds       = 30
+  retain_acked_messages      = false
+  message_retention_duration = "86400s"
+
+  expiration_policy {
+    ttl = ""
+  }
+
+  push_config {
+    push_endpoint = "${google_cloud_run_v2_service.this.uri}/push"
+
+    # La audiencia es la URL del servicio, no la de la ruta: así la valida Cloud Run.
+    oidc_token {
+      service_account_email = google_service_account.push.email
+      audience              = google_cloud_run_v2_service.this.uri
+    }
+  }
+
+  retry_policy {
+    minimum_backoff = "10s"
+    maximum_backoff = "600s"
+  }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.push_dlq.id
+    max_delivery_attempts = var.max_delivery_attempts
+  }
+
+  depends_on = [
+    google_cloud_run_v2_service_iam_member.invocador_push,
+    google_service_account_iam_member.pubsub_firma_oidc,
+  ]
+}
+
+resource "google_pubsub_topic_iam_member" "push_dlq_publicador" {
+  project = var.project_id
+  topic   = google_pubsub_topic.push_dlq.name
+  role    = "roles/pubsub.publisher"
+  member  = local.pubsub_agent
+}
+
+resource "google_pubsub_subscription_iam_member" "push_dlq_suscriptor" {
+  project      = var.project_id
+  subscription = google_pubsub_subscription.push.name
   role         = "roles/pubsub.subscriber"
   member       = local.pubsub_agent
 }

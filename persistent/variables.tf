@@ -27,3 +27,9 @@ variable "portal_ci_service_account" {
   type        = string
   default     = "ci-image-publisher@solventa-admin.iam.gserviceaccount.com"
 }
+
+variable "android_package_name" {
+  description = "Nombre de paquete (applicationId) de la app Android de fe-mobile; es el mismo en debug y release."
+  type        = string
+  default     = "com.solventa4bits.movil"
+}

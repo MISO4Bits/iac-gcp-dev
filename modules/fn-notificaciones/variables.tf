@@ -46,6 +46,12 @@ variable "sender_backend" {
   default     = "resend"
 }
 
+variable "push_backend" {
+  description = "`fcm` entrega los avisos push por Firebase Cloud Messaging; `logging` solo registra."
+  type        = string
+  default     = "fcm"
+}
+
 variable "otlp_endpoint" {
   description = "Endpoint OTLP/HTTP de Grafana Cloud (el mismo del módulo observability)."
   type        = string
